@@ -59,7 +59,7 @@ func updateColumnWidth(nlri, nexthop, aspath, label string) {
 }
 
 func getNeighbors(vrf string) ([]*api.Peer, error) {
-	adv := true
+	adv := false
 	if vrf != "" {
 		adv = false
 	} else if t := neighborsOpts.Transport; t != "" {
