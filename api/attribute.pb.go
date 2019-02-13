@@ -681,10 +681,12 @@ type EVPNEthernetAutoDiscoveryRoute struct {
 	Label       uint32                     `protobuf:"varint,4,opt,name=label" json:"label,omitempty"`
 }
 
-func (m *EVPNEthernetAutoDiscoveryRoute) Reset()                    { *m = EVPNEthernetAutoDiscoveryRoute{} }
-func (m *EVPNEthernetAutoDiscoveryRoute) String() string            { return proto.CompactTextString(m) }
-func (*EVPNEthernetAutoDiscoveryRoute) ProtoMessage()               {}
-func (*EVPNEthernetAutoDiscoveryRoute) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
+func (m *EVPNEthernetAutoDiscoveryRoute) Reset()         { *m = EVPNEthernetAutoDiscoveryRoute{} }
+func (m *EVPNEthernetAutoDiscoveryRoute) String() string { return proto.CompactTextString(m) }
+func (*EVPNEthernetAutoDiscoveryRoute) ProtoMessage()    {}
+func (*EVPNEthernetAutoDiscoveryRoute) Descriptor() ([]byte, []int) {
+	return fileDescriptor0, []int{18}
+}
 
 func (m *EVPNEthernetAutoDiscoveryRoute) GetRd() *google_protobuf.Any {
 	if m != nil {
@@ -2130,10 +2132,12 @@ type TunnelEncapSubTLVEncapsulation struct {
 	Cookie []byte `protobuf:"bytes,2,opt,name=cookie,proto3" json:"cookie,omitempty"`
 }
 
-func (m *TunnelEncapSubTLVEncapsulation) Reset()                    { *m = TunnelEncapSubTLVEncapsulation{} }
-func (m *TunnelEncapSubTLVEncapsulation) String() string            { return proto.CompactTextString(m) }
-func (*TunnelEncapSubTLVEncapsulation) ProtoMessage()               {}
-func (*TunnelEncapSubTLVEncapsulation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{66} }
+func (m *TunnelEncapSubTLVEncapsulation) Reset()         { *m = TunnelEncapSubTLVEncapsulation{} }
+func (m *TunnelEncapSubTLVEncapsulation) String() string { return proto.CompactTextString(m) }
+func (*TunnelEncapSubTLVEncapsulation) ProtoMessage()    {}
+func (*TunnelEncapSubTLVEncapsulation) Descriptor() ([]byte, []int) {
+	return fileDescriptor0, []int{66}
+}
 
 func (m *TunnelEncapSubTLVEncapsulation) GetKey() uint32 {
 	if m != nil {

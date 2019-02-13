@@ -63,15 +63,18 @@ service GobgpApi {
   rpc ListVrf(ListVrfRequest) returns (stream ListVrfResponse);
 
   rpc AddPolicy(AddPolicyRequest) returns (google.protobuf.Empty);
+  rpc ReplacePolicy(AddPolicyRequest) returns (google.protobuf.Empty);
   rpc DeletePolicy(DeletePolicyRequest) returns (google.protobuf.Empty);
   rpc ListPolicy(ListPolicyRequest) returns (stream ListPolicyResponse);
   rpc SetPolicies(SetPoliciesRequest) returns (google.protobuf.Empty);
 
   rpc AddDefinedSet(AddDefinedSetRequest) returns (google.protobuf.Empty);
+  rpc ReplaceDefinedSet(AddDefinedSetRequest) returns (google.protobuf.Empty);
   rpc DeleteDefinedSet(DeleteDefinedSetRequest) returns (google.protobuf.Empty);
   rpc ListDefinedSet(ListDefinedSetRequest) returns (stream ListDefinedSetResponse);
 
   rpc AddStatement(AddStatementRequest) returns (google.protobuf.Empty);
+  rpc ReplaceStatement(AddStatementRequest) returns (google.protobuf.Empty);
   rpc DeleteStatement(DeleteStatementRequest) returns (google.protobuf.Empty);
   rpc ListStatement(ListStatementRequest) returns (stream ListStatementResponse);
 

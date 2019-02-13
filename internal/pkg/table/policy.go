@@ -3481,6 +3481,28 @@ func (r *RoutingPolicy) AddDefinedSet(s DefinedSet) error {
 	return nil
 }
 
+func (r *RoutingPolicy) ReplaceDefinedSet(s DefinedSet) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if m, ok := r.definedSetMap[s.Type()]; !ok {
+		return fmt.Errorf("invalid defined-set type: %d", s.Type())
+	} else {
+		m[s.Name()] = s
+	}
+
+	// Apply changes
+	for _, s := range r.statementMap {
+		for _, c := range s.Conditions {
+				if err := r.validateCondition(c); err != nil {
+				return err
+				}
+		}
+	}
+
+	return nil
+}
+
 func (r *RoutingPolicy) DeleteDefinedSet(a DefinedSet, all bool) (err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -3534,6 +3556,27 @@ func (r *RoutingPolicy) AddStatement(st *Statement) (err error) {
 		err = d.Add(st)
 	} else {
 		m[name] = st
+	}
+
+	return err
+}
+
+func (r *RoutingPolicy) ReplaceStatement(st *Statement) (err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, c := range st.Conditions {
+		if err = r.validateCondition(c); err != nil {
+			return
+		}
+	}
+	m := r.statementMap
+	name := st.Name
+	m[name] = st
+
+	/* Update Policies that use this statement */
+	for _, p := range r.policyMap {
+		p.FillUp(r.statementMap)
 	}
 
 	return err
@@ -3617,6 +3660,56 @@ func (r *RoutingPolicy) AddPolicy(x *Policy, refer bool) (err error) {
 	} else {
 		pMap[name] = x
 	}
+
+	return err
+}
+
+func (r *RoutingPolicy) ReplacePolicy(x *Policy, refer bool) (err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, st := range x.Statements {
+		for _, c := range st.Conditions {
+			if err = r.validateCondition(c); err != nil {
+				return
+			}
+		}
+	}
+
+	pMap := r.policyMap
+	sMap := r.statementMap
+	name := x.Name
+	old_policy, ok := pMap[name]
+
+	if refer {
+		   err = x.FillUp(sMap)
+	} else {
+		for _, st := range x.Statements {
+			if _, ok := sMap[st.Name]; ok {
+				err = fmt.Errorf("statement %s already defined", st.Name)
+				return
+			}
+			sMap[st.Name] = st
+		}
+	}
+
+	if ok {
+		for _, assignment := range r.assignmentMap {
+			for idx, policy := range assignment.importPolicies {
+				if policy == old_policy {
+					assignment.importPolicies[idx] = x
+				}
+			}
+
+			for idx, policy := range assignment.exportPolicies {
+				if policy == old_policy {
+					assignment.exportPolicies[idx] = x
+				}
+			}
+		}
+	}
+
+	pMap[name] = x
 
 	return err
 }
