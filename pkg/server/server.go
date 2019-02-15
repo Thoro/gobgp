@@ -241,6 +241,8 @@ func (s *BgpServer) Serve() {
 		s.handleFSMMessage(peer, e)
 	}
 
+	go s.handleMgmtTraffic()
+
 	for {
 		passConn := func(conn *net.TCPConn) {
 			host, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
@@ -331,8 +333,6 @@ func (s *BgpServer) Serve() {
 		}
 
 		select {
-		case op := <-s.mgmtCh:
-			s.handleMGMTOp(op)
 		case conn := <-s.acceptCh:
 			passConn(conn)
 		default:
@@ -349,8 +349,6 @@ func (s *BgpServer) Serve() {
 	CONT:
 
 		select {
-		case op := <-s.mgmtCh:
-			s.handleMGMTOp(op)
 		case rmsg := <-s.roaManager.ReceiveROA():
 			s.roaManager.HandleROAEvent(rmsg)
 		case conn := <-s.acceptCh:
@@ -362,6 +360,15 @@ func (s *BgpServer) Serve() {
 			handlefsmMsg(e.(*fsmMsg))
 		case e := <-s.fsmStateCh:
 			handlefsmMsg(e)
+		}
+	}
+}
+
+func (s *BgpServer) handleMgmtTraffic() {
+	for {
+		select {
+		case op := <-s.mgmtCh:
+			go s.handleMGMTOp(op)
 		}
 	}
 }
@@ -2108,36 +2115,67 @@ func (s *BgpServer) softResetIn(addr string, family bgp.RouteFamily) error {
 	if err != nil {
 		return err
 	}
-	for _, peer := range peers {
-		families := familiesForSoftreset(peer, family)
 
-		pathList := make([]*table.Path, 0, peer.adjRibIn.Count(families))
-		for _, path := range peer.adjRibIn.PathList(families, false) {
-			// RFC4271 9.1.2 Phase 2: Route Selection
-			//
-			// If the AS_PATH attribute of a BGP route contains an AS loop, the BGP
-			// route should be excluded from the Phase 2 decision function.
-			isLooped := false
-			if aspath := path.GetAsPath(); aspath != nil {
-				peer.fsm.lock.RLock()
-				localAS := peer.fsm.peerInfo.LocalAS
-				allowOwnAS := int(peer.fsm.pConf.AsPathOptions.Config.AllowOwnAs)
-				peer.fsm.lock.RUnlock()
-				isLooped = hasOwnASLoop(localAS, allowOwnAS, aspath)
+	log.WithFields(log.Fields{
+		"Topic": "Peer",
+		"Key":   addr,
+	}).Debug("Starting soft reset in")
+
+	var wg sync.WaitGroup
+
+	wg.Add(len(peers))
+
+	for _, a_peer := range peers {
+
+		go func (peer *peer) {
+			defer wg.Done()
+
+			start := time.Now()
+			log.WithFields(log.Fields{
+				"Topic": "Peer",
+				"Key":   peer.ID(),
+			}).Debug("Starting soft reset in")
+
+			families := familiesForSoftreset(peer, family)
+
+			pathList := make([]*table.Path, 0, peer.adjRibIn.Count(families))
+			for _, path := range peer.adjRibIn.PathList(families, false) {
+				// RFC4271 9.1.2 Phase 2: Route Selection
+				//
+				// If the AS_PATH attribute of a BGP route contains an AS loop, the BGP
+				// route should be excluded from the Phase 2 decision function.
+				isLooped := false
+				if aspath := path.GetAsPath(); aspath != nil {
+					peer.fsm.lock.RLock()
+					localAS := peer.fsm.peerInfo.LocalAS
+					allowOwnAS := int(peer.fsm.pConf.AsPathOptions.Config.AllowOwnAs)
+					peer.fsm.lock.RUnlock()
+					isLooped = hasOwnASLoop(localAS, allowOwnAS, aspath)
+				}
+				if path.IsAsLooped() != isLooped {
+					// can't modify the existing one. needs to create one
+					path = path.Clone(false)
+					path.SetAsLooped(isLooped)
+					// update accepted counter
+					peer.adjRibIn.Update([]*table.Path{path})
+				}
+				if !path.IsAsLooped() {
+					pathList = append(pathList, path)
+				}
 			}
-			if path.IsAsLooped() != isLooped {
-				// can't modify the existing one. needs to create one
-				path = path.Clone(false)
-				path.SetAsLooped(isLooped)
-				// update accepted counter
-				peer.adjRibIn.Update([]*table.Path{path})
-			}
-			if !path.IsAsLooped() {
-				pathList = append(pathList, path)
-			}
-		}
-		s.propagateUpdate(peer, pathList)
+			s.propagateUpdate(peer, pathList)
+
+			elapsed := time.Since(start)
+			log.WithFields(log.Fields{
+				"Topic": "Peer",
+				"Key":   peer.ID(),
+				"Elapsed": elapsed,
+			}).Debug("Finished soft reset int")
+		}(a_peer)
 	}
+
+	wg.Wait()
+
 	return err
 }
 
@@ -2146,60 +2184,91 @@ func (s *BgpServer) softResetOut(addr string, family bgp.RouteFamily, deferral b
 	if err != nil {
 		return err
 	}
-	for _, peer := range peers {
-		peer.fsm.lock.RLock()
-		notEstablished := peer.fsm.state != bgp.BGP_FSM_ESTABLISHED
-		peer.fsm.lock.RUnlock()
-		if notEstablished {
-			continue
-		}
-		families := familiesForSoftreset(peer, family)
 
-		if deferral {
-			if family == bgp.RouteFamily(0) {
-				families = peer.configuredRFlist()
-			}
+	log.WithFields(log.Fields{
+		"Topic": "Peer",
+		"Key":   addr,
+	}).Debug("Starting soft reset out")
+
+	var wg sync.WaitGroup
+
+	wg.Add(len(peers))
+
+	for _, a_peer := range peers {
+
+		go func (peer *peer) {
+			defer wg.Done()
+
+			start := time.Now()
+			log.WithFields(log.Fields{
+				"Topic": "Peer",
+				"Key":   peer.ID(),
+			}).Debug("Starting soft reset out")
+
 			peer.fsm.lock.RLock()
-			_, y := peer.fsm.rfMap[bgp.RF_RTC_UC]
-			c := peer.fsm.pConf.GetAfiSafi(bgp.RF_RTC_UC)
-			restarting := peer.fsm.pConf.GracefulRestart.State.LocalRestarting
+			notEstablished := peer.fsm.state != bgp.BGP_FSM_ESTABLISHED
 			peer.fsm.lock.RUnlock()
-			if restarting {
-				peer.fsm.lock.Lock()
-				peer.fsm.pConf.GracefulRestart.State.LocalRestarting = false
-				peer.fsm.lock.Unlock()
-				log.WithFields(log.Fields{
-					"Topic":    "Peer",
-					"Key":      peer.ID(),
-					"Families": families,
-				}).Debug("deferral timer expired")
-			} else if y && !c.MpGracefulRestart.State.EndOfRibReceived {
-				log.WithFields(log.Fields{
-					"Topic":    "Peer",
-					"Key":      peer.ID(),
-					"Families": families,
-				}).Debug("route-target deferral timer expired")
-			} else {
-				continue
+			if notEstablished {
+				return
 			}
-		}
+			families := familiesForSoftreset(peer, family)
 
-		pathList, _ := s.getBestFromLocal(peer, families)
-		if len(pathList) > 0 {
 			if deferral {
-				pathList = func() []*table.Path {
-					l := make([]*table.Path, 0, len(pathList))
-					for _, p := range pathList {
-						if !p.IsWithdraw {
-							l = append(l, p)
-						}
-					}
-					return l
-				}()
+				if family == bgp.RouteFamily(0) {
+					families = peer.configuredRFlist()
+				}
+				peer.fsm.lock.RLock()
+				_, y := peer.fsm.rfMap[bgp.RF_RTC_UC]
+				c := peer.fsm.pConf.GetAfiSafi(bgp.RF_RTC_UC)
+				restarting := peer.fsm.pConf.GracefulRestart.State.LocalRestarting
+				peer.fsm.lock.RUnlock()
+				if restarting {
+					peer.fsm.lock.Lock()
+					peer.fsm.pConf.GracefulRestart.State.LocalRestarting = false
+					peer.fsm.lock.Unlock()
+					log.WithFields(log.Fields{
+						"Topic":    "Peer",
+						"Key":      peer.ID(),
+						"Families": families,
+					}).Debug("deferral timer expired")
+				} else if y && !c.MpGracefulRestart.State.EndOfRibReceived {
+					log.WithFields(log.Fields{
+						"Topic":    "Peer",
+						"Key":      peer.ID(),
+						"Families": families,
+					}).Debug("route-target deferral timer expired")
+				} else {
+					return
+				}
 			}
-			sendfsmOutgoingMsg(peer, pathList, nil, false)
-		}
+
+			pathList, _ := s.getBestFromLocal(peer, families)
+			if len(pathList) > 0 {
+				if deferral {
+					pathList = func() []*table.Path {
+						l := make([]*table.Path, 0, len(pathList))
+						for _, p := range pathList {
+							if !p.IsWithdraw {
+								l = append(l, p)
+							}
+						}
+						return l
+					}()
+				}
+				sendfsmOutgoingMsg(peer, pathList, nil, false)
+			}
+
+			elapsed := time.Since(start)
+			log.WithFields(log.Fields{
+				"Topic": "Peer",
+				"Key":   peer.ID(),
+				"Elapsed": elapsed,
+			}).Debug("Finished soft reset out")
+		}(a_peer)
 	}
+
+	wg.Wait()
+
 	return nil
 }
 
