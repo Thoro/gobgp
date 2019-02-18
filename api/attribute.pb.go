@@ -119,6 +119,9 @@ It has these top-level messages:
 	StopBgpRequest
 	GetBgpRequest
 	GetBgpResponse
+	SetLogLevelRequest
+	GetLogLevelRequest
+	GetLogLevelResponse
 	AddPeerRequest
 	DeletePeerRequest
 	ListPeerRequest

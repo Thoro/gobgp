@@ -34,6 +34,9 @@ service GobgpApi {
   rpc StopBgp(StopBgpRequest) returns (google.protobuf.Empty);
   rpc GetBgp(GetBgpRequest) returns (GetBgpResponse);
 
+  rpc SetLogLevel(SetLogLevelRequest) returns (google.protobuf.Empty);
+  rpc GetLogLevel(GetLogLevelRequest) returns (GetLogLevelResponse);
+
   rpc AddPeer(AddPeerRequest) returns (google.protobuf.Empty);
   rpc DeletePeer(DeletePeerRequest) returns (google.protobuf.Empty);
   rpc ListPeer(ListPeerRequest) returns (stream ListPeerResponse);
@@ -112,6 +115,17 @@ message GetBgpRequest {
 
 message GetBgpResponse {
   Global global = 1;
+}
+
+message SetLogLevelRequest {
+  string loglevel = 1;
+}
+
+message GetLogLevelRequest {
+}
+
+message GetLogLevelResponse {
+  string loglevel = 1;
 }
 
 message AddPeerRequest {

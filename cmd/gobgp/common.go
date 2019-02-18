@@ -75,6 +75,7 @@ const (
 	cmdBMP            = "bmp"
 	cmdLargecommunity = "large-community"
 	cmdSummary        = "summary"
+	cmdLogLevel       = "loglevel"
 )
 
 const (
