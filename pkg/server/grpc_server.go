@@ -951,6 +951,10 @@ func (s *server) AddDefinedSet(ctx context.Context, r *api.AddDefinedSetRequest)
 	return &empty.Empty{}, s.bgpServer.AddDefinedSet(ctx, r)
 }
 
+func (s *server) ReplaceDefinedSet(ctx context.Context, r *api.AddDefinedSetRequest) (*empty.Empty, error) {
+	return &empty.Empty{}, s.bgpServer.ReplaceDefinedSet(ctx, r)
+}
+
 func (s *server) DeleteDefinedSet(ctx context.Context, r *api.DeleteDefinedSetRequest) (*empty.Empty, error) {
 	return &empty.Empty{}, s.bgpServer.DeleteDefinedSet(ctx, r)
 }
@@ -1512,6 +1516,10 @@ func (s *server) AddStatement(ctx context.Context, r *api.AddStatementRequest) (
 	return &empty.Empty{}, s.bgpServer.AddStatement(ctx, r)
 }
 
+func (s *server) ReplaceStatement(ctx context.Context, r *api.AddStatementRequest) (*empty.Empty, error) {
+	return &empty.Empty{}, s.bgpServer.ReplaceStatement(ctx, r)
+}
+
 func (s *server) DeleteStatement(ctx context.Context, r *api.DeleteStatementRequest) (*empty.Empty, error) {
 	return &empty.Empty{}, s.bgpServer.DeleteStatement(ctx, r)
 }
@@ -1591,6 +1599,10 @@ func (s *server) ListPolicy(r *api.ListPolicyRequest, stream api.GobgpApi_ListPo
 
 func (s *server) AddPolicy(ctx context.Context, r *api.AddPolicyRequest) (*empty.Empty, error) {
 	return &empty.Empty{}, s.bgpServer.AddPolicy(ctx, r)
+}
+
+func (s *server) ReplacePolicy(ctx context.Context, r *api.AddPolicyRequest) (*empty.Empty, error) {
+	return &empty.Empty{}, s.bgpServer.ReplacePolicy(ctx, r)
 }
 
 func (s *server) DeletePolicy(ctx context.Context, r *api.DeletePolicyRequest) (*empty.Empty, error) {

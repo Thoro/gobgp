@@ -3111,6 +3111,19 @@ func (s *BgpServer) AddDefinedSet(ctx context.Context, r *api.AddDefinedSetReque
 	}, false)
 }
 
+func (s *BgpServer) ReplaceDefinedSet(ctx context.Context, r *api.AddDefinedSetRequest) error {
+	return s.mgmtOperation(func() error {
+		if r == nil || r.DefinedSet == nil {
+			return fmt.Errorf("invalid request")
+		}
+		set, err := newDefinedSetFromApiStruct(r.DefinedSet)
+		if err != nil {
+			return err
+		}
+		return s.policy.ReplaceDefinedSet(set)
+	}, false)
+}
+
 func (s *BgpServer) DeleteDefinedSet(ctx context.Context, r *api.DeleteDefinedSetRequest) error {
 	return s.mgmtOperation(func() error {
 		if r == nil || r.DefinedSet == nil {
@@ -3130,7 +3143,8 @@ func (s *BgpServer) ListStatement(ctx context.Context, r *api.ListStatementReque
 		s := s.policy.GetStatement(r.Name)
 		l = make([]*api.Statement, 0, len(s))
 		for _, st := range s {
-			l = append(l, toStatementApi(st))
+			stmt := toStatementApi(st)
+			l = append(l, stmt)
 		}
 		return nil
 	}, false)
@@ -3156,6 +3170,19 @@ func (s *BgpServer) AddStatement(ctx context.Context, r *api.AddStatementRequest
 		}
 		return s.policy.AddStatement(st)
 	}, false)
+}
+
+func (s *BgpServer) ReplaceStatement(ctx context.Context, r *api.AddStatementRequest) error {
+    return s.mgmtOperation(func() error {
+        if r == nil || r.Statement == nil {
+            return fmt.Errorf("invalid request")
+        }
+        st, err := newStatementFromApiStruct(r.Statement)
+        if err != nil {
+            return err
+        }
+        return s.policy.ReplaceStatement(st)
+    }, false)
 }
 
 func (s *BgpServer) DeleteStatement(ctx context.Context, r *api.DeleteStatementRequest) error {
@@ -3203,6 +3230,19 @@ func (s *BgpServer) AddPolicy(ctx context.Context, r *api.AddPolicyRequest) erro
 		}
 		return err
 	}, false)
+}
+
+func (s *BgpServer) ReplacePolicy(ctx context.Context, r *api.AddPolicyRequest) error {
+    return s.mgmtOperation(func() error {
+        if r == nil || r.Policy == nil {
+            return fmt.Errorf("invalid request")
+        }
+        p, err := newPolicyFromApiStruct(r.Policy)
+        if err == nil {
+            err = s.policy.ReplacePolicy(p, r.ReferExistingStatements)
+        }
+        return err
+    }, false)
 }
 
 func (s *BgpServer) DeletePolicy(ctx context.Context, r *api.DeletePolicyRequest) error {
