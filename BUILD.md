@@ -23,6 +23,12 @@ The GoBGP project adopts [Standard Go Project Layout](https://github.com/golang-
 If you change the gRPC API, generate `api/gobgp.pb.go` in the following way:
 
 ```bash
+PATH=$PATH:/data/go/bin
+export PATH
+./protoc -I ${GOBGP}/api --go_out=plugins=grpc:${GOBGP}/api          ${GOBGP}/api/gobgp.proto ${GOBGP}/api/attribute.proto ${GOBGP}/api/capability.proto
+```
+
+```bash
 $ protoc -I ~/protobuf/src -I ${GOBGP}/api --go_out=plugins=grpc:${GOBGP}/api \
          ${GOBGP}/api/gobgp.proto ${GOBGP}/api/attribute.proto ${GOBGP}/api/capability.proto
 ```

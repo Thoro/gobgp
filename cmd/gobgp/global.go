@@ -1669,3 +1669,46 @@ func newGlobalCmd() *cobra.Command {
 	globalCmd.AddCommand(ribCmd, policyCmd, delCmd)
 	return globalCmd
 }
+
+func modLoglevel (args []string) error {
+	level := args[0]
+
+	_, err := client.SetLogLevel(ctx, &api.SetLogLevelRequest{ Loglevel: level })
+
+	if err != nil {
+		return err
+	}
+
+	return showLoglevel()
+}
+
+func showLoglevel () error {
+	r, err := client.GetLogLevel(ctx, &api.GetLogLevelRequest{})
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("LogLevel: %s\n", r.Loglevel)
+
+	return nil
+}
+
+func newLoglevelCmd () *cobra.Command {
+	loglevelCmd := &cobra.Command{
+		Use: cmdLogLevel,
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			if len(args) != 0 {
+				err = modLoglevel(args)
+			} else {
+				err = showLoglevel()
+			}
+			if err != nil {
+				exitWithError(err)
+			}
+		},
+	}
+
+	return loglevelCmd
+}
