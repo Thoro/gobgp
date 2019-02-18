@@ -1655,6 +1655,26 @@ func (s *server) GetBgp(ctx context.Context, r *api.GetBgpRequest) (*api.GetBgpR
 	return s.bgpServer.GetBgp(ctx, r)
 }
 
+func (s *server) GetLogLevel(ctx context.Context, r *api.GetLogLevelRequest) (*api.GetLogLevelResponse, error) {
+	response := &api.GetLogLevelResponse{
+		Loglevel: log.GetLevel().String(),
+	}
+
+	return response, nil
+}
+
+func (s *server) SetLogLevel(ctx context.Context, r *api.SetLogLevelRequest) (*empty.Empty, error) {
+	level, err := log.ParseLevel(r.Loglevel)
+
+	if err != nil {
+		return nil, err
+	}
+
+	log.SetLevel(level)
+
+	return &empty.Empty{}, nil
+}
+
 func newGlobalFromAPIStruct(a *api.Global) *config.Global {
 	families := make([]config.AfiSafi, 0, len(a.Families))
 	for _, f := range a.Families {
